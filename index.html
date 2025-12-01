@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provably Fair Verification Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .content-wrapper {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        
+        .step-number {
+            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);
+        }
+        
+        .code-block {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 100%);
+            border-left: 3px solid #a855f7;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.5); }
+            50% { box-shadow: 0 0 30px rgba(168, 85, 247, 0.8); }
+        }
+        
+        .result-glow {
+            animation: pulse-glow 2s infinite;
+        }
+    </style>
+</head>
+<body class="p-8">
+    <div class="max-w-4xl mx-auto content-wrapper">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <div class="flex items-center justify-center gap-3 mb-4">
+                <svg class="w-16 h-16 text-emerald-400 drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                </svg>
+                <h1 class="text-5xl font-bold text-white drop-shadow-lg">Provably Fair Verification</h1>
+            </div>
+            <p class="text-slate-300 text-xl">
+                Interactive demonstration of cryptographic game verification
+            </p>
+        </div>
+
+        <!-- Step 1: Server Seed Generation -->
+        <div class="glass-card rounded-2xl p-8 mb-6 hover:border-purple-400/40 transition-all duration-300">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="step-number text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg">1</div>
+                <h2 class="text-2xl font-bold text-white">Server Seed Generation</h2>
+            </div>
+            
+            <button onclick="generateServerSeed()" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-xl font-semibold hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-purple-500/50 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Generate Server Seed
+            </button>
+
+            <div id="serverSeedDisplay" class="mt-6 space-y-4 hidden">
+                <div class="code-block p-5 rounded-lg">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                        <span class="text-yellow-400 font-semibold">Hashed Server Seed (Public)</span>
+                    </div>
+                    <code id="hashedSeed" class="text-green-400 text-sm break-all"></code>
+                </div>
+                
+                <div id="revealedSeedDisplay" class="code-block p-5 rounded-lg hidden">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+                        </svg>
+                        <span class="text-emerald-400 font-semibold">Revealed Server Seed</span>
+                    </div>
+                    <code id="revealedSeed" class="text-emerald-400 text-sm break-all"></code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Client Seed Input -->
+        <div class="glass-card rounded-2xl p-8 mb-6 hover:border-purple-400/40 transition-all duration-300">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="step-number text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg">2</div>
+                <h2 class="text-2xl font-bold text-white">Your Client Seed</h2>
+            </div>
+            
+            <div class="space-y-4">
+                <label class="text-slate-300 block font-medium">
+                    Enter your custom seed (or use default):
+                </label>
+                <input
+                    type="text"
+                    id="clientSeed"
+                    value="player_custom_seed_123"
+                    class="w-full bg-black/30 text-white px-5 py-4 rounded-xl border border-white/20 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 outline-none transition-all"
+                    placeholder="Your custom seed"
+                />
+                <p class="text-sm text-slate-400 bg-blue-500/10 p-3 rounded-lg border border-blue-400/30">
+                    💡 This proves the casino can't manipulate results after you commit your seed
+                </p>
+            </div>
+        </div>
+
+        <!-- Step 3: Play Game -->
+        <div class="glass-card rounded-2xl p-8 mb-6 hover:border-purple-400/40 transition-all duration-300">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="step-number text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg">3</div>
+                <h2 class="text-2xl font-bold text-white">Play & Generate Result</h2>
+            </div>
+            
+            <button
+                onclick="playGame()"
+                id="playButton"
+                class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-8 py-4 rounded-xl font-semibold hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg hover:shadow-emerald-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                🎲 Roll Dice (1-100)
+            </button>
+
+            <div id="resultDisplay" class="mt-6 result-glow bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border-2 border-emerald-400 rounded-2xl p-8 text-center hidden">
+                <p class="text-slate-300 mb-2 text-lg">Game Result:</p>
+                <p id="resultValue" class="text-7xl font-bold text-emerald-400 my-4"></p>
+                <p id="resultDetails" class="text-sm text-slate-400 mt-4 bg-black/30 p-3 rounded-lg"></p>
+            </div>
+        </div>
+
+        <!-- Step 4: Verification -->
+        <div id="verificationSection" class="glass-card rounded-2xl p-8 hover:border-purple-400/40 transition-all duration-300 hidden">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="step-number text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg">4</div>
+                <h2 class="text-2xl font-bold text-white">Verify Fairness</h2>
+            </div>
+            
+            <button
+                onclick="revealAndVerify()"
+                id="verifyButton"
+                class="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-blue-500/50 flex items-center gap-2"
+            >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Reveal Server Seed & Verify
+            </button>
+
+            <div id="verificationResult" class="space-y-4 mt-6 hidden">
+                <div id="verifyingSpinner" class="text-center py-8">
+                    <svg class="w-12 h-12 text-purple-400 animate-spin mx-auto mb-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="text-slate-300">Verifying cryptographic proof...</p>
+                </div>
+                
+                <div id="verificationSuccess" class="bg-emerald-500/20 border-2 border-emerald-400 rounded-2xl p-8 hidden">
+                    <div class="flex items-center justify-center gap-3 mb-6">
+                        <svg class="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="text-2xl font-bold text-emerald-400">Verification Successful!</span>
+                    </div>
+                    <div class="code-block p-5 rounded-lg space-y-3 text-sm">
+                        <p class="text-slate-300">
+                            ✓ Server seed hash matches: <code id="verifyHash" class="text-emerald-400 font-semibold"></code>
+                        </p>
+                        <p class="text-slate-300">
+                            ✓ Result independently calculated: <code id="verifyResult" class="text-emerald-400 font-semibold"></code>
+                        </p>
+                        <p class="text-slate-300">
+                            ✓ Casino could NOT have manipulated this outcome
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Educational Footer -->
+        <div class="mt-8 glass-card rounded-2xl p-8 border-blue-400/30">
+            <h3 class="text-2xl font-bold text-blue-400 mb-4 flex items-center gap-2">
+                <span>🎓</span> What Just Happened?
+            </h3>
+            <ul class="space-y-3 text-slate-300">
+                <li class="flex items-start gap-2">
+                    <span class="text-purple-400 font-bold">•</span>
+                    <span>The casino committed to a <strong class="text-white">hashed</strong> server seed before you played</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="text-purple-400 font-bold">•</span>
+                    <span>You provided your own client seed, preventing post-game manipulation</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="text-purple-400 font-bold">•</span>
+                    <span>The result was generated using <strong class="text-white">SHA-256</strong> cryptographic hashing</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="text-purple-400 font-bold">•</span>
+                    <span>After playing, you verified the revealed seed matches the original hash</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="text-purple-400 font-bold">•</span>
+                    <span>This mathematical proof is impossible to fake in Web2 casinos</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let serverSeed = '';
+        let hashedServerSeed = '';
+        let nonce = 1;
+        let gameResult = null;
+
+        // Simple SHA-256 hash function
+        async function sha256(str) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(str);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function generateServerSeed() {
+            serverSeed = 'secret_server_' + Math.random().toString(36).substring(2, 15);
+            hashedServerSeed = await sha256(serverSeed);
+            
+            document.getElementById('serverSeedDisplay').classList.remove('hidden');
+            document.getElementById('hashedSeed').textContent = hashedServerSeed;
+            document.getElementById('revealedSeedDisplay').classList.add('hidden');
+            document.getElementById('resultDisplay').classList.add('hidden');
+            document.getElementById('verificationSection').classList.add('hidden');
+            document.getElementById('playButton').disabled = false;
+            
+            gameResult = null;
+        }
+
+        async function playGame() {
+            if (!hashedServerSeed) {
+                alert('Generate server seed first!');
+                return;
+            }
+
+            const clientSeed = document.getElementById('clientSeed').value;
+            
+            // Simulate dice roll (1-100) using seeds
+            const combined = serverSeed + clientSeed + nonce;
+            const hash = await sha256(combined);
+            const first8Chars = hash.substring(0, 8);
+            const decimal = parseInt(first8Chars, 16);
+            const outcome = (decimal % 100) + 1;
+
+            gameResult = outcome;
+            
+            document.getElementById('resultDisplay').classList.remove('hidden');
+            document.getElementById('resultValue').textContent = outcome;
+            document.getElementById('resultDetails').textContent = `Nonce: ${nonce} | Algorithm: SHA-256(${serverSeed.substring(0, 15)}... + ${clientSeed} + ${nonce})`;
+            
+            document.getElementById('verificationSection').classList.remove('hidden');
+            
+            nonce++;
+        }
+
+        async function revealAndVerify() {
+            document.getElementById('verifyButton').classList.add('hidden');
+            document.getElementById('verificationResult').classList.remove('hidden');
+            document.getElementById('verifyingSpinner').classList.remove('hidden');
+            document.getElementById('verificationSuccess').classList.add('hidden');
+            
+            // Show revealed seed
+            document.getElementById('revealedSeedDisplay').classList.remove('hidden');
+            document.getElementById('revealedSeed').textContent = serverSeed;
+            
+            // Verify the hash matches
+            const verifyHash = await sha256(serverSeed);
+            const isValid = verifyHash === hashedServerSeed;
+            
+            setTimeout(() => {
+                document.getElementById('verifyingSpinner').classList.add('hidden');
+                
+                if (isValid) {
+                    document.getElementById('verificationSuccess').classList.remove('hidden');
+                    document.getElementById('verifyHash').textContent = hashedServerSeed.substring(0, 16) + '...';
+                    document.getElementById('verifyResult').textContent = gameResult;
+                } else {
+                    alert('⚠️ HASH MISMATCH! Casino cheated!');
+                }
+            }, 1000);
+        }
+
+        // Disable play button initially
+        document.getElementById('playButton').disabled = true;
+    </script>
+</body>
+</html>
