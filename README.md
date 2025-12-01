@@ -26,8 +26,6 @@ Provably fair is a cryptographic technique that allows players to verify that ga
 
 [View Demo](https://pandaexplorer.github.io/Provably-Fair-iGaming-Demo/)
 
-*(Replace with your actual GitHub Pages URL after enabling it)*
-
 ## 💻 Local Usage
 
 Simply open `index.html` in any modern web browser. No server or dependencies required!
